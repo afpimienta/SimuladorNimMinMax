@@ -120,72 +120,9 @@ algoritmos solo emiten eventos (`enter`, `expand`, `evaluate`, `bound`, `prune`,
 `assign`, `done`) y la interfaz los consume, de modo que la animación **representa
 fielmente la ejecución real** y no una simulación independiente.
 
-## 6. Cómo ejecutar la aplicación
+## 6. Cómo se validó su funcionamiento
 
-**Opción A (la más rápida):** abrir `index.html` directamente en el navegador
-(doble clic). No hay módulos ES ni peticiones de red, así que funciona con `file://`.
-
-**Opción B (servidor local):** servir la carpeta con cualquier servidor estático:
-
-```bash
-npx serve .            # o
-python -m http.server 8000
-```
-
-y abrir `http://localhost:8000`.
-
-**Despliegue (GitHub Pages / Netlify / Vercel):** es un sitio **estático** sin build.
-Sube la carpeta tal cual (o conecta el repositorio). Como solo se usan rutas
-relativas, funciona igual en la raíz del dominio o en un subdirectorio.
-
-**Uso:** elige el algoritmo (Minimax / Poda Alfa‑Beta) y el estado inicial
-(`[1, 3]` es el caso principal; hay otros pequeños), y usa los botones
-**◀ Anterior · ▶ Siguiente · ▶▶ Reproducir · ⏸ Pausar · ↺ Reiniciar**, el deslizador
-de progreso o las flechas del teclado `←`/`→` (y `espacio` para reproducir/pausar).
-En el panel del árbol, los botones **− / +** ajustan el zoom (50 %–200 %, paso del
-10 %) y **100 %** lo restablece; el nodo actual se mantiene centrado al cambiarlo.
-
-## 7. Cómo se validó su funcionamiento
-
-### 7.1 Pruebas automáticas (`tests.js`) — 99 pruebas, 7 grupos
-
-`tests.js` es independiente del DOM. La sección de pruebas se retiró de la interfaz
-tras validarse, pero el archivo sigue incluido: para volver a ejecutarlas, abre la
-consola del navegador y lanza:
-
-```js
-const r = NimTests.run(NimGame.PRESETS);
-r.passed + '/' + r.total;          // "99/99"
-r.results.filter(x => !x.pass);    // []  (ninguna falla)
-```
-
-1. **Movimientos legales** – todo movimiento retira ≥ 1 ficha de una sola fila, no
-   excede las fichas de esa fila, no toca las demás filas, no hay duplicados, la
-   cantidad de movimientos es `sum(estado)` y un tablero vacío no tiene movimientos.
-   Incluye una exploración completa de todos los estados alcanzables desde `[1, 3]`.
-2. **Estados terminales** – `[0,0]`/`[0,0,0]` son terminales; `[1,3]` y `[0,1]` no;
-   utilidad `-1` con MAX en turno y `+1` con MIN en turno; `null` en no terminales.
-3. **Mismo valor y mismo mejor movimiento** – para cada estado se ejecutan los dos
-   algoritmos y se contrasta además con un **oráculo independiente (suma XOR/nim‑sum)**:
-   con MAX en turno el valor es `+1` si y solo si `nim-sum ≠ 0`, y el mejor movimiento
-   deja la suma XOR en `0`.
-4. **Eficacia de la poda** – Alfa‑Beta evalúa, visita y evalúa terminales **≤** que
-   Minimax en todos los estados; Minimax nunca poda; en `[1, 3]` la poda es efectiva.
-5. **Integridad de la traza** – para ambos algoritmos y todos los estados: la raíz es
-   MAX en `[1,3]` con profundidad 0, los hijos coinciden con movimientos legales del
-   padre, los turnos alternan MAX/MIN, la profundidad crece de 1 en 1, la utilidad de
-   cada terminal es correcta, la traza termina en `done` y **ninguna rama podada llega
-   a ser explorada**.
-6. **Orden de exploración obligatorio** – en `[1, 3]` el orden es
-   `Fila 1→1, Fila 2→1, Fila 2→2, Fila 2→3`; en todos los estados las filas van en
-   orden ascendente y las cantidades son `1, 2, 3…` dentro de cada fila; y en la
-   traza de ambos algoritmos **el padre está siempre en la cima de la pila al entrar
-   en un hijo** (DFS) con `moveIndex` estrictamente creciente (izquierda a derecha),
-   siendo `0,1,2,3` los hijos explorados en la raíz de `[1, 3]`.
-7. **Caso principal `[1, 3]`** – MAX empieza, valor final `+1`, mejor movimiento
-   `fila 2 → quitar 2` (llega a `[1, 1]`) y al menos una poda con `α ≥ β`.
-
-### 7.2 Resultados obtenidos (estado `[1, 3]`)
+### 6.1 Resultados obtenidos (estado `[1, 3]`)
 
 | Métrica | Minimax | Alfa‑Beta |
 |---|---|---|
@@ -201,31 +138,3 @@ sigue siendo correcta pero es menos agresiva que con otros órdenes: la calidad 
 orden de movimientos es justamente lo que determina cuántas ramas descarta
 Alfa‑Beta.
 
-### 7.3 Verificación manual de la interfaz
-
-Comprobado en navegador recorriendo **todos los pasos** de los dos algoritmos en los
-6 estados iniciales, verificando que:
-
-- no hay errores de JavaScript en consola ni pasos desincronizados;
-- el resaltado del nodo actual, el tablero y el panel educativo coinciden siempre
-  con el evento mostrado (incluidos los nodos terminales y los momentos de poda);
-- «anterior», «siguiente», «reiniciar», el deslizador, el teclado y
-  «reproducir/pausar» funcionan en cualquier punto de la traza;
-- las ramas podadas quedan **visibles, atenuadas y marcadas como `PODADA`** con la
-  condición (`α ≥ β (valores)`) que produjo la poda, y siempre **a la derecha** de las
-  ramas exploradas de ese nodo;
-- el árbol se dibuja **de arriba abajo por niveles** (una profundidad por fila) y los
-  hijos de cada nodo **de izquierda a derecha** en el mismo orden en que los explora el
-  algoritmo: fila 1 antes que fila 2 y, dentro de la fila, retirar 1 antes que 2;
-- el **zoom del árbol** (− / + / 100 %) escala el lienzo sin romper el layout: el
-  nodo actual queda centrado, el desplazamiento sigue siendo correcto y al llegar a
-  los límites (50 % / 200 %) los botones se desactivan;
-- el árbol no presenta solapes ni desbordes (cada nodo queda dentro del lienzo), y la
-  página no genera scroll horizontal tanto en escritorio (dos columnas) como en móvil
-  (columna única).
-
-Para ejecutar las pruebas por separado con Node (opcional):
-
-```bash
-node -e "require('./game.js');require('./algorithms.js');const t=require('./tests.js');const r=t.run();console.log(r.passed+'/'+r.total+' pruebas superadas');r.results.filter(x=>!x.pass).forEach(x=>console.log('FALLA:',x.name))"
-```
