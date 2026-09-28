@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Minimax y Poda Alfa-Beta en el juego de Nim · visualizador interactivo</title>
+<meta name="description" content="Aplicación educativa para visualizar, paso a paso, los algoritmos Minimax y la poda Alfa-Beta aplicados al juego de Nim. Implementación real en HTML, CSS y JavaScript vanilla.">
+<meta name="color-scheme" content="light">
+<link rel="stylesheet" href="style.css">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🌲</text></svg>">
+</head>
+<body>
+
+<header class="site-header">
+  <div class="site-header__inner">
+    <div class="brand">
+      <div class="brand__mark" aria-hidden="true">αβ</div>
+      <div class="brand__text">
+        <h1>Minimax &amp; Poda Alfa‑Beta en el juego de Nim</h1>
+        <p>Visualizador paso a paso de la búsqueda en árbol: movimientos reales, utilidad +1/−1, turnos MAX/MIN y podas reales.</p>
+      </div>
+    </div>
+  </div>
+</header>
+
+<main class="page">
+
+  <!-- ============================ CONTROLES ============================ -->
+  <section class="panel panel--controls" aria-label="Controles de la simulación">
+    <div class="controls__group">
+      <span class="controls__label" id="algoLabel">Algoritmo</span>
+      <div class="seg" role="tablist" aria-labelledby="algoLabel">
+        <button class="seg__btn is-active" type="button" data-algo="minimax" role="tab" aria-selected="true">Minimax</button>
+        <button class="seg__btn" type="button" data-algo="alphabeta" role="tab" aria-selected="false">Poda Alfa‑Beta</button>
+      </div>
+    </div>
+
+    <div class="controls__group controls__group--wide">
+      <span class="controls__label" id="presetLabel">Estado inicial</span>
+      <div class="presets" id="presets" role="group" aria-labelledby="presetLabel"><!-- generado por script.js --></div>
+    </div>
+
+    <div class="controls__group controls__group--play">
+      <span class="controls__label">Paso a paso</span>
+      <div class="playbar">
+        <button class="btn" type="button" id="btnPrev" title="Evento anterior (flecha ←)">◀ Anterior</button>
+        <button class="btn" type="button" id="btnNext" title="Siguiente evento (flecha →)">Siguiente ▶</button>
+        <button class="btn btn--primary" type="button" id="btnPlay" title="Reproducción automática">▶▶ Reproducir</button>
+        <button class="btn" type="button" id="btnPause" title="Pausar la reproducción" disabled>⏸ Pausar</button>
+        <button class="btn btn--ghost" type="button" id="btnReset" title="Volver al primer evento">↺ Reiniciar</button>
+      </div>
+      <div class="scrub">
+        <input type="range" id="scrub" min="0" max="1" value="0" step="1" aria-label="Progreso de la ejecución">
+        <span class="scrub__label" id="stepLabel">Paso 0 / 0</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============================ REJILLA PRINCIPAL ============================ -->
+  <div class="grid">
+
+    <!-- Estado del juego -->
+    <section class="panel panel--board" aria-labelledby="boardTitle">
+      <header class="panel__head">
+        <h2 id="boardTitle">Estado del juego</h2>
+        <span class="panel__hint" id="boardState">[1, 3]</span>
+      </header>
+      <div class="board" id="board"></div>
+      <div class="board__legend">
+        <span><i class="dot dot--ficha"></i> ficha en el tablero</span>
+        <span><i class="dot dot--out"></i> ficha retirada en este turno</span>
+      </div>
+    </section>
+
+    <!-- Árbol de búsqueda -->
+    <section class="panel panel--tree" aria-labelledby="treeTitle">
+      <header class="panel__head">
+        <h2 id="treeTitle">Árbol de búsqueda</h2>
+        <div class="tree-tools">
+          <span class="panel__hint" id="treeAlgo">Minimax · [1, 3]</span>
+          <div class="zoom" role="group" aria-label="Zoom del árbol de búsqueda">
+            <button class="zoom__btn" type="button" id="zoomOut" title="Alejar el árbol" aria-label="Alejar">−</button>
+            <span class="zoom__level" id="zoomLevel" aria-live="polite">100 %</span>
+            <button class="zoom__btn" type="button" id="zoomIn" title="Acercar el árbol" aria-label="Acercar">+</button>
+            <button class="zoom__btn zoom__btn--reset" type="button" id="zoomReset" title="Restablecer el zoom al 100 %">100 %</button>
+          </div>
+        </div>
+      </header>
+
+      <ul class="legend" aria-label="Leyenda del árbol">
+        <li><span class="legend__swatch legend__swatch--max">MAX</span> maximiza (+1)</li>
+        <li><span class="legend__swatch legend__swatch--min">MIN</span> minimiza (−1)</li>
+        <li><span class="legend__swatch legend__swatch--current">◉</span> nodo en exploración</li>
+        <li><span class="legend__swatch legend__swatch--value">+1 ✓</span> nodo evaluado</li>
+        <li><span class="legend__swatch legend__swatch--terminal">TERMINAL</span> sin fichas</li>
+        <li><span class="legend__swatch legend__swatch--pruned">PODADA</span> rama descartada</li>
+        <li><span class="legend__swatch legend__swatch--pending">·</span> sin explorar</li>
+        <li><span class="legend__swatch legend__swatch--order">←→</span> hijos de izquierda a derecha</li>
+      </ul>
+
+      <div class="tree-scroll" id="treeScroll" tabindex="0" aria-label="Árbol de búsqueda, desplazable">
+        <div class="tree-canvas" id="treeCanvas"></div>
+      </div>
+      <p class="tree-hint">Cada nodo muestra: jugador (MAX/MIN), profundidad, estado, movimiento de entrada, valor y —en Alfa‑Beta— la ventana α/β. El árbol se dibuja de arriba abajo por niveles y los hijos de cada nodo <strong>de izquierda a derecha</strong> en el orden obligatorio de exploración (fila 1 antes que fila 2; dentro de la fila, retirar 1 antes que 2), así que las ramas podadas quedan siempre a la derecha. Desplaza el panel (tiene scroll horizontal) y usa los botones <strong>−</strong>/<strong>+</strong> para alejar o acercar el zoom (<strong>100 %</strong> lo restablece).</p>
+    </section>
+
+    <!-- Panel educativo -->
+    <section class="panel panel--edu" aria-labelledby="eduTitle">
+      <header class="panel__head">
+        <h2 id="eduTitle">¿Qué está haciendo el algoritmo?</h2>
+      </header>
+      <div class="edu" id="edu"></div>
+    </section>
+
+    <!-- Estadísticas -->
+    <section class="panel panel--stats" aria-labelledby="statsTitle">
+      <header class="panel__head">
+        <h2 id="statsTitle">Estadísticas</h2>
+        <span class="panel__hint">en vivo</span>
+      </header>
+      <div id="stats"></div>
+    </section>
+
+  </div>
+</main>
+
+<footer class="site-footer">
+  <p>Proyecto educativo estático: <code>index.html</code> · <code>style.css</code> · <code>game.js</code> ·
+     <code>algorithms.js</code> · <code>visualization.js</code> · <code>script.js</code> · <code>tests.js</code>.
+     Desplegable tal cual en GitHub Pages, Netlify o Vercel.</p>
+</footer>
+
+<script src="game.js"></script>
+<script src="algorithms.js"></script>
+<script src="visualization.js"></script>
+<script src="tests.js"></script>
+<script src="script.js"></script>
+</body>
+</html>
